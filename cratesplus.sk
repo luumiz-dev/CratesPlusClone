@@ -1,0 +1,644 @@
+#
+# CratesPlus Skript - Recreated by LuuMiz
+# Original: CratesPlus by ConnorLinfoot
+#           "CratesPlus is no longer being updated or maintained [after 1.16.4]."
+#
+# Plugins Required: Skript, SkBee, skript-yaml
+# 
+# COMMAND USAGE: 
+# every command requires permission: skript.cratesplus
+# put the items you want to be loaded into the crate in your inventory (not hotbar)
+#   /crateskript new crateName command and it will create your first crate
+# /crateskript delete crateName will remove it from crate list and remove the crate from the world
+# /crateskript list will display all of the current crates you have and their locations in the world
+# /crateskript key crateName player will give 1 key of the specified crate to the specified player
+# /crateskript view crateName will open up a chest to see what rewards are possible from a crateskript 
+#   because only admins can run the command, you can take items from the crate with this. It does not effect the actual crate though.
+# /crateskript crateName will place a crate above the block your crosshair is looking at
+# /crateskript holograms will toggle whether future crates will have a name appear above them (on by default)
+#
+# CRATE COLORS:
+# Players with permission skript.cratesplus can recolor crates as well
+# To do this, shift and right click on any placed crate with a dye in your hand
+#
+# HOLOGRAM NAMES SETTING: 
+# by default, all placed crates will come with a hologram above the crate with the crate name.
+# this can be toggled on/off with /crateskript holograms.
+# This will not remove or add holograms to already existing crates.
+# This setting will not change on server restart or skript reload.
+#
+# PARTY OPENING SETTING:
+# by default, this is turned off. If you choose to turn this on, when a player opens a crate
+# the crate will turn into different colors of wool for 3 seconds before returning to it's
+# original state.
+# This setting will not change on server restart or skript reload.
+#
+# CRATE LOCATION AND REWARD LOGGING:
+# inside your plugins/Skript/CratesPlusData directory there will be a data.yml file that will 
+# keep track of crate data. Each crate tracks whether it has been placed, the location it was placed at, and 
+# how many times each item in the crate was won. Once you /delete a crate, the name of that crate in the 
+# yml file will change to 123_old_crate_CrateName and store all of the same data for historical purposes.
+#
+# BUGS:
+# items inside crates cannot be named "air"
+# placing tripwire hook will still cancel place event if player is trying to place a regular tripwire hook while holding a key in offhand
+# 
+
+on load:
+    load yml "plugins/Skript/CratesPlusData/data.yml" as "plugins/Skript/CratesPlusData/data.yml"
+    set {cratesplus.loadedSettingsParty} to yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml"
+    set {cratesplus.loadedSettingsHolos} to yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml"
+
+    if {cratesplus.loadedSettingsParty} is not set:
+        set yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml" to false
+        set {cratesplus.partyopen} to false
+    else if {cratesplus.loadedSettingsParty} is false:
+        set yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml" to false
+        set {cratesplus.partyopen} to false
+    else if {cratesplus.loadedSettingsParty} is true:
+        set yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml" to true
+        set {cratesplus.partyopen} to true
+    
+    if {cratesplus.loadedSettingsHolos} is not set:
+        set yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml" to true
+        set {cratesplus.holograms} to true
+    else if {cratesplus.loadedSettingsHolos} is false:
+        set yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml" to false
+        set {cratesplus.holograms} to false
+    else if {cratesplus.loadedSettingsHolos} is true:
+        set yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml" to true
+        set {cratesplus.holograms} to true
+
+    set {cratesplus.holograms} to true
+    set {cratesplus.partyopen.isBeingOpened} to false
+
+    set the comments of yaml node "settings" from "plugins/Skript/CratesPlusData/data.yml" to "Only the settings will be saved after editing this file and reloading the skript." and "If you happen to change crate data, it will not revert back to the correct data. Be careful."
+
+    save yaml "plugins/Skript/CratesPlusData/data.yml"
+
+on tab complete of "/crateskript":
+    if {cratesplus::*} is set:
+        set tab completions for position 1 to "help", "new", "delete", "key", "list", "view", "holograms", "partyopening", and {cratesplus::*}
+    else:
+        set tab completions for position 1 to "help", "new", "delete", "key", "list", "view", "holograms", and "partyopening"
+    set tab completions for position 2 to {cratesplus::*}
+    set tab completions for position 3 to all players
+
+command /cratesyml:
+    permission: minecraft.op
+    trigger:
+        send "party: %{cratesplus.loadedSettingsParty}%" to player
+        send "holo: %{cratesplus.loadedSettingsHolos}%" to player
+
+command /crateskript <text> [<text>] [<text>]:
+    permission: skript.cratesplus
+    executable by: players
+    usage: [&6&lCRATES&f] Usage: /crateskript [help | new | delete | view | list | holograms | partyopening | crateName]
+    trigger:
+        if arg-1 is not set: 
+            send "&c----->>> &eCRATES COMMAND HELP &c<<<-----"
+            send "&6new <crateName> &f: create's new crate with the contents of your inventory."
+            send "&6delete <crateName> &f: removes a crate from the world."
+            send "&6view <crateName> &f: shows the contents of a specific crate."
+            send "&6list &f: shows all of the crates and their locations."
+            send "&6holograms &f: toggle whether names appear above future crates."
+            send "&6<crateName> &f: places the crate above the block you are looking at."
+            #send "&c----->>> &eCREATED BY LUUMIZ &c<<<-----"
+
+        else if arg-1 is "help": 
+            send "&c----->>> &eCRATES COMMAND HELP &c<<<-----"
+            send "&6new <crateName> &f: create's new crate with the contents of your inventory."
+            send "&6delete <crateName> &f: removes a crate from the world."
+            send "&6view <crateName> &f: shows the contents of a specific crate."
+            send "&6list &f: shows all of the crates and their locations."
+            send "&6holograms &f: toggle whether names appear above future crates."
+            send "&6<crateName> &f: places the crate above the block you are looking at."
+            #send "&c----->>> &eCREATED BY LUUMIZ &c<<<-----"
+        
+        else if arg-1 is "holograms":
+            if {cratesplus.holograms} is true:
+                set {cratesplus.holograms} to false
+                set yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml" to false
+                send "[&6&lCRATES&f] Crates names will no longer appear above crates." to player
+            else if {cratesplus.holograms} is false:
+                set {cratesplus.holograms} to true
+                set yaml value "settings.holograms" from "plugins/Skript/CratesPlusData/data.yml" to true
+                send "[&6&lCRATES&f] Crates names will appear above crates." to player
+            save yaml "plugins/Skript/CratesPlusData/data.yml"
+
+        else if arg-1 is "partyopening":
+            if {cratesplus.partyopen} is true:
+                set {cratesplus.partyopen} to false
+                set yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml" to false
+                send "[&6&lCRATES&f] Crates will not have the party opening animation when opened now." to player
+            else if {cratesplus.partyopen} is false:
+                set {cratesplus.partyopen} to true
+                set yaml value "settings.partyopening" from "plugins/Skript/CratesPlusData/data.yml" to true
+                send "[&6&lCRATES&f] Crates will have the party opening animation when opened now." to player
+            save yaml "plugins/Skript/CratesPlusData/data.yml"
+
+        else if arg-1 is "new":
+            if arg-2 is set:
+                if arg-2 is "new" or "delete" or "list" or "help" or "key" or "view" or "holograms" or "partyopening":
+                    send "[&6&lCRATES&f] You cannot use this name to create a crate."
+                    stop
+                
+                if arg-3 is set:
+                    set {_fullCrateName} to "%arg-2% %arg-3%"
+                else:
+                    set {_fullCrateName} to arg-2
+                
+                set {_uncoloredCrateName} to colored {_fullCrateName}
+                
+                set {_isAllAir} to true
+                set {_count} to 9
+                loop 27 times:
+                    if slot {_count} of player is not air:
+                        set {_isAllAir} to false
+                        exit 1 loop
+                    add 1 to {_count}
+                if {_isAllAir} is true:
+                    send "[&6&lCRATES&f] There are no items in your inventory to create a crate with." to player
+                    stop
+
+                loop {cratesplus::*}:
+                    if {cratesplus::%loop-index%} is {_fullCrateName}:
+                        send "[&6&lCRATES&f] That crate name is already taken."
+                        stop
+                add {_fullCrateName} to {cratesplus::*}
+                set yaml value "%{_fullCrateName}%.isDeleted" from "plugins/Skript/CratesPlusData/data.yml" to false
+                set yaml value "%{_fullCrateName}%.isPlaced" from "plugins/Skript/CratesPlusData/data.yml" to false
+                save yaml "plugins/Skript/CratesPlusData/data.yml"
+                
+                #grabs the player's inventory and turns it into an array of items
+                set {_count} to 9
+                loop 27 times:
+                    add slot {_count} of player's inventory to {cratesplus.%{_fullCrateName}%::*}
+                    add 1 to {_count}
+
+                set {_checkForColors} to colored {_fullCrateName}
+                send "[&6&lCRATES&f] Crate %{_checkForColors}% &fhas been created with: %{cratesplus.%{_fullCrateName}%::*}%"
+            else:
+                send "[&6&lCRATES&f] Usage >>> /crates new crateName"
+        
+        else if arg-1 is "view":
+            if arg-2 is set:
+                set {_foundDelete} to false
+                loop {cratesplus::*}:
+                    if {cratesplus::%loop-index%} is arg-2:
+                        set {_foundDelete} to true
+
+                        # Vanilla Skript GUI
+                        set metadata tag "cratesplus_crate_view" of player to chest inventory with 3 rows named colored "%{cratesplus::%loop-index%}% &f- Admin View"
+                        set {_chestslot} to 0
+                        set {_chestslot2} to 1
+                        loop 27 times:
+                            set slot {_chestslot} of metadata tag "cratesplus_crate_view" of player to {cratesplus.%{cratesplus::%loop-index%}%::%{_chestslot2}%}
+                            add 1 to {_chestslot}
+                            add 1 to {_chestslot2}
+                        open (metadata tag "cratesplus_crate_view" of player) to player
+                        #set {cratesplus.crateOpened.%player's uuid%} to true
+
+
+        else if arg-1 is "delete":
+            if arg-2 is set:
+                set {_foundDelete} to false
+                if arg-2 is set:
+                    if arg-3 is set:
+                        set {_fullCrateName} to "%arg-2% %arg-3%"
+                    else:
+                        set {_fullCrateName} to arg-2
+
+                loop {cratesplus::*}:
+                    if {cratesplus::%loop-index%} is {_fullCrateName}:
+                        set {_foundDelete} to true
+
+                        if distance between player's location and {cratesplus.%{_fullCrateName}%.location} is more than 20:
+                            send "[&6&lCRATES&f] Please be near the crate before deleting it." to player
+                            stop
+
+                        loop entities in radius 2 of {cratesplus.%{_fullCrateName}%.floatingtext}:
+                            if uncolored name of loop-entity is uncolored "%{_fullCrateName}%":
+                                if loop-entity is not player:
+                                    kill loop-entity
+
+                        set {_salt} to random integer between 1 and 1000000000
+                        set yaml value "%{_salt}%_old_crate_%{_fullCrateName}%.isDeleted" from "plugins/Skript/CratesPlusData/data.yml" to true
+                        
+                        set {_placed} to yaml value "%{_fullCrateName}%.isPlaced" from "plugins/Skript/CratesPlusData/data.yml"
+                        set yaml value "%{_salt}%_old_crate_%{_fullCrateName}%.isPlaced" from "plugins/Skript/CratesPlusData/data.yml" to {_placed}
+
+                        set {_loc} to yaml value "%{_fullCrateName}%.location" from "plugins/Skript/CratesPlusData/data.yml"
+                        set yaml value "%{_salt}%_old_crate_%{_fullCrateName}%.location" from "plugins/Skript/CratesPlusData/data.yml" to {_loc}
+
+                        set {_rew} to yaml value "%{_fullCrateName}%.rewards" from "plugins/Skript/CratesPlusData/data.yml"
+                        set yaml value "%{_salt}%_old_crate_%{_fullCrateName}%.rewards" from "plugins/Skript/CratesPlusData/data.yml" to {_rew}
+
+                        set {_col} to yaml value "%{_fullCrateName}%.rewards" from "plugins/Skript/CratesPlusData/data.yml"
+                        set yaml value "%{_salt}%_old_crate_%{_fullCrateName}%.color" from "plugins/Skript/CratesPlusData/data.yml" to {_col}
+
+                        remove {_fullCrateName} from {cratesplus::*}
+                        clear {cratesplus.%{_fullCrateName}%::*} 
+                        set block at {cratesplus.%{_fullCrateName}%.location} to air
+                        clear {cratesplus.%{_fullCrateName}%.location}
+
+                        delete yaml value "%{_fullCrateName}%" from "plugins/Skript/CratesPlusData/data.yml"
+                        save yaml "plugins/Skript/CratesPlusData/data.yml"
+                        
+                        send "[&6&lCRATES&f] Crate %{_fullCrateName}% has been deleted"
+                if {_foundDelete} is false:
+                    set {_checkForColors} to colored {_fullCrateName}
+                    send "[&6&lCRATES&f] There is no crate named %{_checkForColors}%."
+            else:
+                send "[&6&lCRATES&f] Usage >>> /crates delete crateName"
+        
+        else if arg-1 is "list":
+            send "[&6&lCRATES&f] Crate List >>>"
+            loop {cratesplus::*}:
+                if {cratesplus.%{cratesplus::%loop-index%}%.location} is not set:
+                    set {_checkForColors} to colored {cratesplus::%loop-index%}
+                    send "%{_checkForColors}% > Not Placed"
+                else if "{cratesplus.%{cratesplus::%loop-index%}%.location}" is "<none>":
+                    set {_checkForColors} to colored {cratesplus::%loop-index%}
+                    send "%{_checkForColors}% > Not Placed"
+                else:
+                    set {_checkForColors} to colored {cratesplus::%loop-index%}
+                    send "%{_checkForColors}% > %{cratesplus.%{cratesplus::%loop-index%}%.location}%"
+
+        else if arg-1 is "key":
+            set {_checkForLongCrateName::*} to split arg-3 by " "
+            set {_fullCrateName} to arg-2
+            set {_size} to size of {_checkForLongCrateName::*}
+            set {_PlayerToGiveKey} to "%{_checkForLongCrateName::%{_size}%}%"
+            if size of {_checkForLongCrateName::*} is greater than 1:
+                set {_loopSize} to size of {_checkForLongCrateName::*} - 1
+                loop {_loopSize} times:
+                    set {_fullCrateName} to "%{_fullCrateName}% %{_checkForLongCrateName::%loop-value%}%"
+            
+            set {_foundCrate} to false
+            loop {cratesplus::*}:
+                if {cratesplus::%loop-index%} is {_fullCrateName}:
+                    set {_foundCrate} to true
+
+                    set {_checkForColors} to colored {_fullCrateName}
+                    give a tripwire hook of unbreaking with hidden enchants flag named "%{_checkForColors}% Key" with lore "&7Right-Click on a ""%{_checkForColors}%"" crate" and "&7to win an item!" to {_PlayerToGiveKey} parsed as player
+                    send "&6You've been given one crate key!" to {_PlayerToGiveKey} parsed as player
+                    
+            if {_foundCrate} is false:
+                set {_checkForColors} to colored {_fullCrateName}
+                send "[&6&lCRATES&f] There is no crate named %{_checkForColors}%."
+
+        else:
+            if arg-2 is set:
+                if arg-3 is set:
+                    set {_fullCrateName} to "%arg-1% %arg-2% %arg-3%"
+                else:
+                    set {_fullCrateName} to "%arg-1% %arg-2%"
+            else:
+                set {_fullCrateName} to arg-1
+
+            set {_foundCrate} to false
+            loop {cratesplus::*}:
+                if {cratesplus::%loop-index%} is {_fullCrateName}:
+                    set {_foundCrate} to true
+                    if {cratesplus.%{_fullCrateName}%.location} is set:
+                        send "[&6&lCRATES&f] This crate has already been placed." to player
+                        stop
+
+                    if block above target block is air:
+                        set block above target block to shulker box
+                        set {_chestLocation} to block above target block
+
+                    #send "%location of block above target block%" to player
+                    set {cratesplus.%{_fullCrateName}%.location} to location of block above target block
+                    set yaml value "%{_fullCrateName}%.location" from "plugins/Skript/CratesPlusData/data.yml" to {cratesplus.%{_fullCrateName}%.location}
+                    set yaml value "%{_fullCrateName}%.isPlaced" from "plugins/Skript/CratesPlusData/data.yml" to true
+                    set yaml value "%{_fullCrateName}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "default"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+
+                    #fills the chest with crate items
+                    loop {cratesplus.%{_fullCrateName}%::*}:
+                        add {cratesplus.%{_fullCrateName}%::%{_count}%} to {_chestLocation}'s inventory
+                        add 1 to {_count}
+                    
+                    if {cratesplus.holograms} is true:
+                        spawn an armor stand at block at location below {_chestLocation} with nbt "{Invisible:1b,Invulnerable:1b,NoGravity:1b,CustomNameVisible:1}"
+                        set {cratesplus.%{_fullCrateName}%.floatingtext} to location of last spawned armor stand
+                        set display name of last spawned armor stand to colored {_fullCrateName}
+                    
+            if {_foundCrate} is false:
+                set {_checkForColors} to colored {_fullCrateName}
+                send "[&6&lCRATES&f] There is no crate named %{_checkForColors}%&f."                    
+
+
+on right click with tripwire hook:
+    if line 1 of lore of event-item contains "&7Right-Click on a":
+        if {cratesplus.partyopen.isBeingOpened} is true:
+            stop
+        if event-entity is armor stand:
+            stop
+        if event-block is not set:
+            stop
+        loop {cratesplus::*}:
+            if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                set {_checkForColors} to colored {cratesplus::%loop-index%}
+                if line 1 of lore of event-item contains "Right-Click on a ""%{_checkForColors}%":
+                    if player has enough space for 1 diamond sword:
+
+                        if {cratesplus.partyopen} is false:
+                            cancel event
+                            set {_randomReward} to random integer between 1 and 27
+                            set {_reward} to {cratesplus.%{cratesplus::%loop-index%}%::%{_randomReward}%}
+                            while "%{_reward}%" is "air" or "0 air":
+                                set {_randomReward} to random integer between 1 and 27
+                                set {_reward} to {cratesplus.%{cratesplus::%loop-index%}%::%{_randomReward}%}
+                            give {_reward} to player
+                            remove 1 of player's held item from player's inventory
+                            #send "%{_reward}%" to player
+                            #send "[&6&lCRATES&f] You won %{_reward}%!" to player
+
+                            set {_cached} to yaml value "%{cratesplus::%loop-index%}%.rewards.%{_reward}%" from "plugins/Skript/CratesPlusData/data.yml"
+                            set {_newCached} to {_cached} + 1
+                            set yaml value "%{cratesplus::%loop-index%}%.rewards.%{_reward}%" from "plugins/Skript/CratesPlusData/data.yml" to {_newCached}
+                            save yaml "plugins/Skript/CratesPlusData/data.yml"
+                            stop
+                        else:
+                            cancel event
+                            remove 1 of player's held item from player's inventory
+                            set {cratesplus.partyopen.isBeingOpened} to true
+                            loop 6 times:
+                                set block at location of event-block to orange wool
+                                wait 1 tick
+                                set block at location of event-block to magenta wool
+                                wait 1 tick
+                                set block at location of event-block to light blue wool
+                                wait 1 tick
+                                set block at location of event-block to yellow wool
+                                wait 1 tick
+                                set block at location of event-block to lime wool
+                                wait 1 tick
+                                set block at location of event-block to pink wool
+                                wait 1 tick
+                                set block at location of event-block to cyan wool
+                                wait 1 tick
+                                set block at location of event-block to purple wool
+                                wait 1 tick
+                                set block at location of event-block to blue wool
+                                wait 1 tick
+                                set block at location of event-block to red wool
+                                wait 1 tick
+                            set {_color} to yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml"
+                            if {_color} is "default":
+                                set block at event-location to shulker box
+                            else:
+                                set block at event-location to {_color} parsed as itemtype
+                            set {_randomReward} to random integer between 1 and 27
+                            set {_reward} to {cratesplus.%{cratesplus::%loop-index%}%::%{_randomReward}%}
+                            while "%{_reward}%" is "air" or "0 air":
+                                set {_randomReward} to random integer between 1 and 27
+                                set {_reward} to {cratesplus.%{cratesplus::%loop-index%}%::%{_randomReward}%}
+                            give {_reward} to player
+                            
+                            #send "%{_reward}%" to player
+                            #send "[&6&lCRATES&f] You won %{_reward}%!" to player
+
+                            set {_cached} to yaml value "%{cratesplus::%loop-index%}%.rewards.%{_reward}%" from "plugins/Skript/CratesPlusData/data.yml"
+                            set {_newCached} to {_cached} + 1
+                            set yaml value "%{cratesplus::%loop-index%}%.rewards.%{_reward}%" from "plugins/Skript/CratesPlusData/data.yml" to {_newCached}
+                            save yaml "plugins/Skript/CratesPlusData/data.yml"
+                            set {cratesplus.partyopen.isBeingOpened} to false
+                            stop
+
+                    else:
+                        send "[&6&lCRATES&f] Clear space in your inventory before claiming your reward." to player
+                        cancel event
+                else:
+                    send "[&6&lCRATES&f] This key cannot unlock this crate." to player
+                    cancel event
+
+on right click with black dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to black shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "black shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with white dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to white shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "white shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with light gray dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to light gray shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "light gray shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with gray dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to gray shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "gray shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with brown dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to brown shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "brown shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with red dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to red shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "red shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with orange dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to orange shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "orange shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with yellow dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to yellow shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "yellow shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with lime dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to lime shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "lime shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with green dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to green shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "green shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with cyan dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to cyan shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "cyan shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with light blue dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to light blue shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "light blue shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with blue dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to blue shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "blue shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with purple dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to purple shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "purple shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with magenta dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to magenta shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "magenta shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+on right click with pink dye:
+    if player has permission "skript.cratesplus":
+        if player is sneaking:
+            set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
+            loop {cratesplus::*}: 
+                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                    set event-block to pink shulker box
+                    set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "pink shulker box"
+                    save yaml "plugins/Skript/CratesPlusData/data.yml"
+                    wait 2 ticks
+                    set {cratesplus.AdminIsRecoloring.%player's uuid%} to false
+
+
+on right click:
+    if event-block is shulker box or black shulker box or white shulker box or light gray shulker box or gray shulker box or brown shulker box or red shulker box or orange shulker box or yellow shulker box or lime shulker box or green shulker box or cyan shulker box or light blue shulker box or blue shulker box or purple shulker box or magenta shulker box or pink shulker box:
+        loop {cratesplus::*}:
+            if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                cancel event
+                if line 1 of lore of event-item contains "&7Right-Click on a":
+                    stop
+                if {cratesplus.AdminIsRecoloring.%player's uuid%} is true:
+                    stop
+
+                # Vanilla Skript GUI
+                set metadata tag "cratesplus_crate" of player to chest inventory with 3 rows named colored "%{cratesplus::%loop-index%}%"
+                set {_chestslot} to 0
+                set {_chestslot2} to 1
+                loop 27 times:
+                    set slot {_chestslot} of metadata tag "cratesplus_crate" of player to {cratesplus.%{cratesplus::%loop-index%}%::%{_chestslot2}%}
+                    add 1 to {_chestslot}
+                    add 1 to {_chestslot2}
+                open (metadata tag "cratesplus_crate" of player) to player
+                set {cratesplus.crateOpened.%player's uuid%} to true
+
+on inventory click:
+    set {_inv} to the clicked inventory
+    if {cratesplus.crateOpened.%player's uuid%} is true:
+        if "%{_inv}%" is "inventory of %player%":
+            cancel event
+    if event-inventory = (metadata tag "cratesplus_crate" of player):
+        cancel event
+
+on inventory close:
+    if {cratesplus.crateOpened.%player's uuid%} is true:
+        set {cratesplus.crateOpened.%player's uuid%} to false
+
+on break of shulker box or black shulker box or white shulker box or light gray shulker box or gray shulker box or brown shulker box or red shulker box or orange shulker box or yellow shulker box or lime shulker box or green shulker box or cyan shulker box or light blue shulker box or blue shulker box or purple shulker box or magenta shulker box or pink shulker box:
+    loop {cratesplus::*}:
+        if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            send "[&6&lCRATES&f] This a Crate. Please use /crate delete to remove it." to player
+            cancel event
+
+on place of tripwire hook:
+    if line 1 of lore of player's held item contains "Right-Click on a":
+        cancel event
+    else if line 1 of lore of player's off hand item contains "Right-Click on a":
+        cancel event
+
+# failsafe just incase?
+on join:
+    set {cratesplus.crateOpened.%player's uuid%} to false
