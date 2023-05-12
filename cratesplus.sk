@@ -3,7 +3,9 @@
 # Original: CratesPlus by ConnorLinfoot
 #           "CratesPlus is no longer being updated or maintained [after 1.16.4]."
 #
-# Plugins Required: Skript, SkBee, skript-yaml
+#           Updated for 1.19.4
+# 
+# Plugins Required: Skript 2.6.4, SkBee 2.9.0, skript-yaml 1.4.0
 # 
 # COMMAND USAGE: 
 # every command requires permission: skript.cratesplus
@@ -322,7 +324,9 @@ command /crateskript <text> [<text>] [<text>]:
                         add 1 to {_count}
                     
                     if {cratesplus.holograms} is true:
-                        spawn an armor stand at block at location below {_chestLocation} with nbt "{Invisible:1b,Invulnerable:1b,NoGravity:1b,CustomNameVisible:1}"
+                        # /summon armor_stand ~ ~ ~ {Invisible:1,Invulnerable:1b,NoGravity:1b,CustomNameVisible:1b,DisabledSlots:2039583}
+                        spawn an armor stand at block at location 1 above {_chestLocation} 
+                        add nbt compound of "{Invisible:1,Invulnerable:1b,Small:1,DisabledSlots:2039583,CustomNameVisible:1b}" to nbt compound of last spawned armor stand
                         set {cratesplus.%{_fullCrateName}%.floatingtext} to location of last spawned armor stand
                         set display name of last spawned armor stand to colored {_fullCrateName}
                     
@@ -340,7 +344,17 @@ on right click with tripwire hook:
         if event-block is not set:
             stop
         loop {cratesplus::*}:
-            if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+
+            # 2023-05-12 ADDED CODE
+            #send "%location of event-block%" to player
+            #send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+            set {_tt} to location of event-block
+            set yaw of {_tt} to 0
+            set pitch of {_tt} to 0
+            add 1 to the y coordinate of {_tt}
+            #send "%{_tt}%" to player
+
+            if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                 set {_checkForColors} to colored {cratesplus::%loop-index%}
                 if line 1 of lore of event-item contains "Right-Click on a ""%{_checkForColors}%":
                     if player has enough space for 1 diamond sword:
@@ -355,7 +369,7 @@ on right click with tripwire hook:
                             give {_reward} to player
                             remove 1 of player's held item from player's inventory
                             #send "%{_reward}%" to player
-                            #send "[&6&lCRATES&f] You won %{_reward}%!" to player
+                            send "[&6&lCRATES&f] You won %{_reward}%!" to player
 
                             set {_cached} to yaml value "%{cratesplus::%loop-index%}%.rewards.%{_reward}%" from "plugins/Skript/CratesPlusData/data.yml"
                             set {_newCached} to {_cached} + 1
@@ -420,8 +434,16 @@ on right click with black dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to black shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "black shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -431,8 +453,16 @@ on right click with white dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to white shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "white shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -442,8 +472,16 @@ on right click with light gray dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to light gray shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "light gray shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -453,8 +491,16 @@ on right click with gray dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to gray shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "gray shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -464,8 +510,16 @@ on right click with brown dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to brown shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "brown shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -475,8 +529,16 @@ on right click with red dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to red shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "red shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -486,8 +548,16 @@ on right click with orange dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to orange shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "orange shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -497,8 +567,16 @@ on right click with yellow dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to yellow shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "yellow shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -508,8 +586,16 @@ on right click with lime dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to lime shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "lime shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -519,8 +605,16 @@ on right click with green dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to green shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "green shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -531,7 +625,15 @@ on right click with cyan dye:
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
             loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to cyan shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "cyan shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -541,8 +643,16 @@ on right click with light blue dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to light blue shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "light blue shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -552,8 +662,16 @@ on right click with blue dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to blue shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "blue shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -563,8 +681,16 @@ on right click with purple dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to purple shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "purple shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -574,8 +700,16 @@ on right click with magenta dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to magenta shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "magenta shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -585,8 +719,16 @@ on right click with pink dye:
     if player has permission "skript.cratesplus":
         if player is sneaking:
             set {cratesplus.AdminIsRecoloring.%player's uuid%} to true
-            loop {cratesplus::*}: 
-                if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            loop {cratesplus::*}:  
+                # 2023-05-12 ADDED CODE
+                send "%location of event-block%" to player
+                send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+                set {_tt} to location of event-block
+                set yaw of {_tt} to 0
+                set pitch of {_tt} to 0
+                add 1 to the y coordinate of {_tt}
+                send "%{_tt}%" to player
+                if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                     set event-block to pink shulker box
                     set yaml value "%{cratesplus::%loop-index%}%.color" from "plugins/Skript/CratesPlusData/data.yml" to "pink shulker box"
                     save yaml "plugins/Skript/CratesPlusData/data.yml"
@@ -597,7 +739,15 @@ on right click with pink dye:
 on right click:
     if event-block is shulker box or black shulker box or white shulker box or light gray shulker box or gray shulker box or brown shulker box or red shulker box or orange shulker box or yellow shulker box or lime shulker box or green shulker box or cyan shulker box or light blue shulker box or blue shulker box or purple shulker box or magenta shulker box or pink shulker box:
         loop {cratesplus::*}:
-            if "%location of event-block%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
+            # 2023-05-12 ADDED CODE
+            send "%location of event-block%" to player
+            send "%{cratesplus.%{cratesplus::%loop-index%}%.location}%" to player
+            set {_tt} to location of event-block
+            set yaw of {_tt} to 0
+            set pitch of {_tt} to 0
+            add 1 to the y coordinate of {_tt}
+            send "%{_tt}%" to player
+            if "%{_tt}%" is "%{cratesplus.%{cratesplus::%loop-index%}%.location}%":
                 cancel event
                 if line 1 of lore of event-item contains "&7Right-Click on a":
                     stop
@@ -633,8 +783,14 @@ on break of shulker box or black shulker box or white shulker box or light gray 
             send "[&6&lCRATES&f] This a Crate. Please use /crate delete to remove it." to player
             cancel event
 
+#on place of tripwire hook:
+#    if line 1 of lore of player's held item contains "Right-Click on a":
+#        cancel event
+#    else if line 1 of lore of player's off hand item contains "Right-Click on a":
+#        cancel event
+
 on place of tripwire hook:
-    if line 1 of lore of player's held item contains "Right-Click on a":
+    if line 1 of lore of event-item contains "Right-Click on a":
         cancel event
     else if line 1 of lore of player's off hand item contains "Right-Click on a":
         cancel event
